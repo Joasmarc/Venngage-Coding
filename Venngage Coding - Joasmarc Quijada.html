@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+  <!-- canvas -->
+  <canvas width="800" height="600" id="draw"></canvas>
+
+  <script>
+    let cv, cx, objects, currentObject = null;
+    let indexX = 0, IndexY = 0;
+
+    function render(){
+        cx.fillStyle = '#f0f0f0';
+        cx.fillRect(0, 0, 800, 600);
+
+        findNearestShapes()
+
+        for (var i = 0; i < objects.length; i++) {
+            cx.fillStyle = objects[i].color;
+            cx.fillRect(objects[i].x, objects[i].y, objects[i].width, objects[i].height)
+        }
+    }
+
+	function findNearestShapes(){
+		if (currentObject !== null) {
+			let NearestShapesDifX = null;
+			let NearestShapesDifY = null;
+			let NearestShapesDifCentroid = null;
+			let indexShape = null;
+      		cx.lineWidth = 5;
+			
+			for (var i = 0; i < objects.length; i++) {
+				if (currentObject.id !== objects[i].id){
+
+					let diffShapeX1 = Math.abs((currentObject.topEdge - objects[i].topEdge))
+					let diffShapeX2 = Math.abs((currentObject.topEdge - objects[i].bottomEdge))
+					let diffShapeX3 = Math.abs((currentObject.bottomEdge - objects[i].bottomEdge))
+					let diffShapeX4 = Math.abs((currentObject.bottomEdge - objects[i].topEdge))
+
+					let diffShapeY1 = Math.abs((currentObject.rightEdge - objects[i].rightEdge))
+					let diffShapeY2 = Math.abs((currentObject.rightEdge - objects[i].leftEdge))
+					let diffShapeY3 = Math.abs((currentObject.leftEdge - objects[i].leftEdge))
+					let diffShapeY4 = Math.abs((currentObject.leftEdge - objects[i].rightEdge))
+
+					let diffShapesX = Math.min(diffShapeX1, diffShapeX2, diffShapeX3, diffShapeX4);
+					let diffShapesY = Math.min(diffShapeY1, diffShapeY2, diffShapeY3, diffShapeY4);
+
+                    // similar lane
+
+                    if (diffShapeX1 === 0) similarLine(0, currentObject.topEdge )
+                    if (diffShapeX2 === 0) similarLine(0, currentObject.topEdge )
+                    if (diffShapeX3 === 0) similarLine(0, currentObject.bottomEdge )
+                    if (diffShapeX4 === 0) similarLine(0, currentObject.bottomEdge )
+
+                    if (diffShapeY1 === 0) similarLine(currentObject.rightEdge, 0)
+                    if (diffShapeY2 === 0) similarLine(currentObject.rightEdge, 0)
+                    if (diffShapeY3 === 0) similarLine(currentObject.leftEdge, 0)
+                    if (diffShapeY4 === 0) similarLine(currentObject.leftEdge, 0)
+
+                    // calculate centroid
+
+					let diffCentroidShapesX = Math.abs((currentObject.leftEdge + currentObject.width / 2) - (objects[i].leftEdge + objects[i].width / 2))
+					let diffCentroidShapesY = Math.abs((currentObject.topEdge + currentObject.height / 2) - (objects[i].topEdge + objects[i].height / 2))
+					let diffCentroidShapesTotal = diffCentroidShapesX + diffCentroidShapesY
+
+                    // Neares for conditions
+
+          			let n_conditions = 0
+
+					if (diffShapesX < NearestShapesDifX || NearestShapesDifX === null){
+            			n_conditions++
+          			}
+
+          			if (diffShapesY < NearestShapesDifY || NearestShapesDifX === null){
+            			n_conditions++
+          			}
+
+					if (diffCentroidShapesTotal < NearestShapesDifCentroid || NearestShapesDifX === null) {
+						n_conditions++
+					}
+
+					if (n_conditions > 1){
+
+						if (indexShape !== null){
+							cx.strokeStyle = '#f0f0f0';
+							cx.strokeRect(objects[indexShape].x, objects[indexShape].y, objects[indexShape].width, objects[indexShape].height);
+						}
+
+						NearestShapesDifX = diffShapesX;
+						NearestShapesDifY = diffShapesY;
+						NearestShapesDifCentroid = diffCentroidShapesTotal;
+						indexShape = i
+						cx.strokeStyle = '#E51616'; // color negro
+						cx.strokeRect(objects[i].x, objects[i].y, objects[i].width, objects[i].height);
+					}
+				}
+			}
+		}
+	}
+
+    function similarLine(x, y){
+        cx.strokeStyle = '#15EEE4';
+        cx.lineWidth = 3;
+        let maxX = 0
+        let maxY = 0
+        if (x === 0){
+            maxX = 800
+            maxY = y
+        } else {
+            maxX = x
+            maxY = 600
+        }
+
+        cx.beginPath();
+        cx.moveTo(x, y);
+        cx.lineTo(maxX, maxY);
+        cx.stroke();
+    }
+
+    window.onload = function() {
+        objects = [];
+        cv = document.getElementById('draw');
+        cx = cv.getContext('2d');
+    
+        objects.push({
+        id: 1,
+        x: 0, y: 0,
+        width: 100, height: 200,
+        color: '#EF1FFC',
+        topEdge:0, rightEdge:100, bottomEdge:200, leftEdge:0,
+        });
+        objects.push({
+        id: 2,
+        x: 300, y: 150,
+        width: 50, height: 100,
+        color: '#9E1FFC',
+        topEdge:150, rightEdge:50, bottomEdge:100, leftEdge:300,
+        });
+        objects.push({
+        id: 3,
+        x: 120, y: 50,
+        width: 50, height: 50,
+        color: '#FC981F',
+        topEdge:50, rightEdge:50, bottomEdge:50, leftEdge:120,
+        });
+        render();
+
+        cv.onmousedown = function(event) {
+            for (var i = 0; i < objects.length; i++) {
+                if (objects[i].x < event.clientX
+                && (objects[i].width + objects[i].x > event.clientX)
+                && objects[i].y < event.clientY
+                && (objects[i].height + objects[i].y > event.clientY)
+                ) {
+                    currentObject = objects[i];
+                    IndexY = event.clientY - objects[i].y;
+                    indexX = event.clientX - objects[i].x;
+                    break;
+                }
+            }
+        }
+
+        cv.onmousemove = function(event) {
+            if (currentObject != null) {
+                currentObject.x = event.clientX - indexX;
+                currentObject.y = event.clientY - IndexY;
+
+                currentObject.topEdge = currentObject.y
+                currentObject.rightEdge = currentObject.x + currentObject.width
+                currentObject.bottomEdge = currentObject.y + currentObject.height
+                currentObject.leftEdge = currentObject.x
+            }
+            render();
+        }
+
+        cv.onmouseup = function(evet) {
+            currentObject = null;
+        }
+    }
+  </script>
+</body>
+</html>
